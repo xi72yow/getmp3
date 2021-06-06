@@ -7,6 +7,14 @@ const url = "https://music.youtube.com/watch?v=XUaX0zl-6to&feature=share";
 async function getMp3fromYTURL(url) {
     let folder = new Date().toString();
 
+    if (!fs.existsSync("temp")) {
+        fs.mkdirSync("temp");
+    }
+
+    if (!fs.existsSync("extract" )) {
+        fs.mkdirSync("extract" );
+    }
+
     if (!fs.existsSync("temp/" + folder)) {
         fs.mkdirSync("temp/" + folder);
     }
@@ -93,4 +101,4 @@ async function getMp3fromYTURL(url) {
     video.pipe(vidStream);
 }
 
-getMp3fromYTURL("YT_URL");
+getMp3fromYTURL(url);
