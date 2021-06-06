@@ -1,0 +1,21 @@
+{
+  "name": "getmp3",
+  "version": "1.0.0",
+  "description": "downloader",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "yt",
+    "download",
+    "mp3"
+  ],
+  "author": "xi72yow",
+  "license": "ISC",
+  "dependencies": {
+    "fluent-ffmpeg": "^2.1.2",
+    "fs": "0.0.1-security",
+    "youtube-dl": "^3.5.0"
+  }
+}
