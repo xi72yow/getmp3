@@ -1,56 +1,45 @@
-const fs = require('fs')
-const youtubedl = require('youtube-dl')
+const fs = require('fs');
+const ytdl = require('ytdl-core');
 const ffmpeg = require('fluent-ffmpeg')
+const request = require('request');
+const NodeID3 = require('node-id3');
 
 const url = "https://music.youtube.com/watch?v=XUaX0zl-6to&feature=share";
 
+function getYear(crazySyle) {
+    return crazySyle.split('-')[0]
+}
+
 async function getMp3fromYTURL(url) {
+
     let folder = new Date().toString();
 
     if (!fs.existsSync("temp")) {
         fs.mkdirSync("temp");
     }
 
-    if (!fs.existsSync("extract" )) {
-        fs.mkdirSync("extract" );
+    if (!fs.existsSync("extract")) {
+        fs.mkdirSync("extract");
     }
 
     if (!fs.existsSync("temp/" + folder)) {
         fs.mkdirSync("temp/" + folder);
     }
 
-    const options = {
-        // Downloads available thumbnail.
-        all: false,
-        // The directory to save the downloaded files in.
-        cwd: "temp/" + folder,
-    }
+    const video = ytdl(url);
 
-    youtubedl.getThumbs(url, options, function (err, files) {
-        if (err) throw err
-
-        console.log('thumbnail file downloaded:', files)
-    })
-
-    const video = youtubedl(url,
-        // Optional arguments passed to youtube-dl.
-        ['--format=18'],
-        // Additional options can be given for calling `child_process.execFile()`.
-        { cwd: __dirname })
-
-    // Will be called when the download starts.
-    let titleData;
     video.on('info', function (info) {
 
         titleData = {
-            "title": info.title,
-            "author": info.channel,
-            "album": info.album,
-            "year": info.release_year,
-            "thumbnail": info.thumbnail,
-            "description": info.description,
-            "filename": info._filename,
+            "title": info.videoDetails.title,
+            "author": info.videoDetails.author.name,
+            "album": info.videoDetails.album,
+            "year": getYear(info.videoDetails.publishDate),
+            "thumbnail": info.videoDetails.thumbnails[0],
+            "description": info.videoDetails.description,
+            "genre": info.videoDetails.category,
         }
+        console.log(titleData);
 
         // stringify Object
         var jsonContent = JSON.stringify(info);
@@ -69,11 +58,6 @@ async function getMp3fromYTURL(url) {
     function convert(input, output, callback) {
         ffmpeg(input)
             .output(output)
-            .addOutputOption('-metadata', 'title="' + titleData.title + '"')
-            .addOutputOption('-metadata', 'author="' + titleData.author + '"')
-            .addOutputOption('-metadata', 'album="' + titleData.album + '"')
-            .addOutputOption('-metadata', 'year="' + titleData.year + '"')
-            .addOutputOption('-metadata', 'description="' + titleData.description + '"')
             .on('end', function () {
                 console.log('conversion ended');
                 callback(null);
@@ -83,22 +67,60 @@ async function getMp3fromYTURL(url) {
             }).run();
     }
 
+    function download(uri, filename, callback) {
+        request.head(uri, function (err, res, body) {
+            console.log('content-type:', res.headers['content-type']);
+            console.log('content-length:', res.headers['content-length']);
+
+            request(uri).pipe(fs.createWriteStream(filename)).on('close', callback);
+        });
+    };
+
     var vidStream = fs.createWriteStream("temp/" + folder + '/myvideo.mp4');
+
+    video.pipe(vidStream);
+
     vidStream.on('finish', function () {
+
         console.log('file done');
 
-        convert("temp/" + folder + '/myvideo.mp4', 'extract/' + titleData.filename + '.mp3', function (err) {
+        convert("temp/" + folder + '/myvideo.mp4', 'extract/' + titleData.title + '.mp3', function (err) {
             if (!err) {
                 console.log('conversion complete');
+                download(titleData.thumbnail, "temp/" + folder + '/cover.webp', function (err) {
+                    if (!err) {
+                        convert("temp/" + folder + '/cover.webp', "temp/" + folder + "/" + titleData.title + '.png', function (err) {
+                            if (!err) {
+                                const tags = {
+                                    title: titleData.title,
+                                    artist: titleData.author,
+                                    album: titleData.album,
+                                    genre: titleData.genre,
+                                    year: titleData.year,
+                                    APIC: "./temp/" + folder + "/" + titleData.title + ".png",
+                                }
+
+                                const success = NodeID3.write(tags, './extract/' + titleData.title + '.mp3');
+                                console.log("sucess: " + success);
+                                return;
+
+                            } else throw err
+
+                        });
+                        return;
+
+                    } else throw err
+                });
                 return;
 
             } else throw err
+
         });
 
 
     });
-
-    video.pipe(vidStream);
 }
+
+
 
 getMp3fromYTURL(url);
