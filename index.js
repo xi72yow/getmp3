@@ -4,7 +4,7 @@ const ffmpeg = require('fluent-ffmpeg')
 const request = require('request');
 const NodeID3 = require('node-id3');
 
-const url = "https://music.youtube.com/watch?v=XUaX0zl-6to&feature=share";
+const url = "https://music.youtube.com/watch?v=7wzeXfxSPns&feature=share";
 
 function getYear(crazySyle) {
     return crazySyle.split('-')[0]
@@ -33,10 +33,10 @@ async function getMp3fromYTURL(url) {
         titleData = {
             "title": info.videoDetails.title,
             "author": info.videoDetails.author.name,
-            "album": info.videoDetails.album,
+            "album": info.videoDetails.keywords[0],
             "year": getYear(info.videoDetails.publishDate),
             "thumbnail": info.videoDetails.thumbnails[0],
-            "description": info.videoDetails.description,
+            "comment": info.videoDetails.video_url,
             "genre": info.videoDetails.category,
         }
         console.log(titleData);
@@ -89,7 +89,7 @@ async function getMp3fromYTURL(url) {
                 console.log('conversion complete');
                 download(titleData.thumbnail, "temp/" + folder + '/cover.webp', function (err) {
                     if (!err) {
-                        convert("temp/" + folder + '/cover.webp', "temp/" + folder + "/" + titleData.title + '.png', function (err) {
+                        convert("temp/" + folder + '/cover.webp', "temp/" + folder + '/x.png', function (err) {
                             if (!err) {
                                 const tags = {
                                     title: titleData.title,
@@ -97,7 +97,8 @@ async function getMp3fromYTURL(url) {
                                     album: titleData.album,
                                     genre: titleData.genre,
                                     year: titleData.year,
-                                    APIC: "./temp/" + folder + "/" + titleData.title + ".png",
+                                    comment: titleData.comment,
+                                    APIC: "./temp/" + folder + "/x.png",
                                 }
 
                                 const success = NodeID3.write(tags, './extract/' + titleData.title + '.mp3');
